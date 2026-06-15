@@ -15,9 +15,14 @@ path = "src/bin/compare_engines_real.rs"
 name = "compare-rule-engines"
 path = "src/bin/compare_rule_engines.rs"
 
+[[bin]]
+name = "compare-engines-yaml-vs-rete"
+path = "src/bin/compare_engines_yaml_vs_rete.rs"
+
 [dependencies]
 waf-types   = { path = "../waf-types" }
 rule        = { path = "../rule" }
+optimized_rule = { path = "../optimized_rule" }
 tokio       = { workspace = true }
 serde       = { workspace = true }
 serde_json  = { workspace = true }

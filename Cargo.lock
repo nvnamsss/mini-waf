@@ -1054,6 +1054,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
+name = "optimized_rule"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "ipnet",
+ "regex",
+ "serde",
+ "serde_yaml",
+ "tracing",
+ "waf-types",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1960,6 +1974,7 @@ dependencies = [
  "ipnet",
  "maxminddb",
  "notify",
+ "optimized_rule",
  "pest",
  "pest_derive",
  "regex",

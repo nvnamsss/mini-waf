@@ -1,0 +1,101 @@
+════════════════════════════════════════════════════════════════════
+WAF Rule Engine Comparison: YAML vs Optimized YAML vs RETE+GRL
+Testing against REAL rules from rules/ directory
+════════════════════════════════════════════════════════════════════
+
+Iterations: 10000 per scenario
+
+✓ Loaded 19 YAML rules
+
+Rules by tier and count:
+  global       : 6 rules
+  critical     : 10 rules
+  medium       : 1 rules
+  catch-all    : 2 rules
+
+✓ Loaded 19 optimized YAML rules (with pre-compiled regex cache)
+
+
+🔍 DEBUG: Loaded 19 rules from YAML files
+First rule:
+id: whitelist-monitoring
+source: system
+description: Internal monitoring — bypass all blocking rules
+priority: 1
+condition:
+  and:
+  - field: ip
+    match: cidr
+    value: 10.0.1.0/24
+action: allow
+risk_score_delta: 0
+
+
+🔍 Generated GRL length: 4769 chars
+
+Generated GRL (first 2000 chars):
+rule "whitelist-monitoring" salience 999 {
+    when (contains(Request.ClientIp, "10.0.1.0/24"))
+    then
+    allow();
+}
+
+rule "honeypot-admin-test" salience 995 {
+    when (Request.Path == "/admin-test")
+    then
+    Request.RiskScore = Request.RiskScore + 100;
+    block("honeypot-admin-test");
+}
+
+rule "sqli-global-001" salience 990 {
+    when (matches(Request.Body, "(?i)(union[\s\+]+select|drop[\s\+]+table|insert[\s\+]+into)") || matches(Request.Path, "(?i)(union[\s\+]+select)"))
+    then
+    Request.RiskScore = Request.RiskScore + 50;
+    block("sqli-global-001");
+}
+
+rule "xss-global-001" salience 989 {
+    when (matches(Request.Body, "(?i)<script[^>]*>|javascript\s*:|on\w+\s*=") || matches(Request.Path, "(?i)<script[^>]*>|javascript\s*:"))
+    then
+    Request.RiskScore = Request.RiskScore + 40;
+    block("xss-global-001");
+}
+
+rule "lfi-global-001" salience 988 {
+    when (matches(Request.Path, "(?i)(\.\.[\\/]){2,}|(etc/passwd|etc/shadow)") || matches(Request.Body, "(?i)(\.\.[\\/]){2,}|(etc/passwd|etc/shadow)"))
+    then
+    Request.RiskScore = Request.RiskScore + 45;
+    block("lfi-global-001");
+}
+
+rule "cmdi-global-001" salience 987 {
+    when (matches(Request.Body, "(?i)[;&|`$]\s*(cat|id|whoami|uname|curl|wget|bash)\b") || matches(Request.Path, "(?i)[;&|`]\s*(cat|id|whoami)\b"))
+    then
+    Request.RiskScore = Request.RiskScore + 60;
+    block("cmdi-global-001");
+}
+
+rule "catchall-bot-ua" salience 900 {
+    when (false /* invalid header regex: (?i)(masscan|zgrab|nuclei|sqlmap|nikto|nessus|openvas|nmap|acunetix|burpsuite) */)
+    then
+    Request.RiskScore = Request.RiskScore + 30;
+    challenge("js");
+}
+
+rule "catchall-recon-paths" salience 899 {
+    when (matches(Request.Path, "(?i)(\.env$|\.git/|\.svn/|/phpinfo|/wp-admin|/phpmyadmin|/manager/html|\.bak$|\.sql$)"))
+    then
+    Request.RiskScore = Request.RiskScore + 25;
+    block("catchall-recon-paths");
+}
+
+rule "rate-api-default" salience 970 {
+    when (starts_with(Request.Path, "/api/"))
+    then
+    Req...
+(truncated)
+
+✓ GRL parsed: 19 rule ASTs
+
+📊 Engine 1: YAML Rule Engine (linear + condition tree)
+────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-//! Benchmark comparing YAML rule engine vs RETE + GRL engine
+//! Benchmark comparing YAML rule engine vs Optimized YAML engine vs RETE + GRL engine
 //!
-//! Tests both engines against the same YAML rules from rules/ directory
+//! Tests all three engines against the same YAML rules from rules/ directory
 //! to compare evaluation performance and correctness.
 //!
 //! Run from repo root:
@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Instant;
 
 // Import YAML engine
@@ -15,6 +16,13 @@ use rule::{
     loader::RuleLoader as YamlRuleLoader,
     RequestContext as YamlRequestContext,
     RuleEvaluator,
+};
+
+// Import Optimized YAML engine
+use optimized_rule::{
+    loader::RuleLoader as OptimizedRuleLoader,
+    RequestContext as OptimizedRequestContext,
+    RuleEvaluator as OptimizedRuleEvaluator,
 };
 
 // Import RETE engine
@@ -28,11 +36,11 @@ use waf_types::risk::RiskScore;
 #[tokio::main]
 async fn main() {
     println!("════════════════════════════════════════════════════════════════════");
-    println!("WAF Rule Engine Comparison: YAML vs RETE+GRL");
+    println!("WAF Rule Engine Comparison: YAML vs Optimized YAML vs RETE+GRL");
     println!("Testing against REAL rules from rules/ directory");
     println!("════════════════════════════════════════════════════════════════════\n");
 
-    let iterations = 10_000;
+    let iterations = 1000;  // Reduced from 10,000 for faster testing
     println!("Iterations: {} per scenario\n", iterations);
 
     // Load rules from YAML files
@@ -57,6 +65,20 @@ async fn main() {
 
     // Create YAML evaluator
     let yaml_evaluator = RuleEvaluator::new(yaml_ruleset.clone());
+
+    // Load optimized YAML engine rules
+    let optimized_ruleset = match OptimizedRuleLoader::load_from_path(rules_dir) {
+        Ok(rs) => rs,
+        Err(e) => {
+            eprintln!("❌ Failed to load optimized YAML rules: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    println!("✓ Loaded {} optimized YAML rules (with pre-compiled regex cache)\n", optimized_ruleset.rules.len());
+
+    // Create optimized YAML evaluator
+    let optimized_evaluator = OptimizedRuleEvaluator::new(optimized_ruleset.clone());
 
     // Load and convert YAML rules to RETE/GRL
     let rete_engine = match load_rete_engine(rules_dir) {
@@ -92,8 +114,24 @@ async fn main() {
 
     println!("\n");
 
+    // Benchmark optimized YAML engine
+    println!("📊 Engine 2: Optimized YAML Engine (pre-compiled regex cache)");
+    println!("────────────────────────────────────────────────────────────────────");
+    
+    let (opt_time, opt_scenarios, opt_matches) = benchmark_optimized_yaml_engine(&optimized_evaluator, iterations, &test_scenarios);
+    
+    println!("Total time: {:.2} ms\n", opt_time);
+    println!("Per-request latency by scenario:");
+    for (name, _ip, _method, _path, _payload) in &test_scenarios {
+        let latency = opt_scenarios.get(&name.to_string()).copied().unwrap_or(0.0);
+        let matched = opt_matches.get(&name.to_string()).map(|s| s.as_str()).unwrap_or("(no match)");
+        println!("  {:20} : {:8.3} µs  |  Rule: {}", name, latency, matched);
+    }
+
+    println!("\n");
+
     // Benchmark RETE engine
-    println!("📊 Engine 2: RETE + GRL Engine (network + fire cycles)");
+    println!("📊 Engine 3: RETE + GRL Engine (network + fire cycles)");
     println!("────────────────────────────────────────────────────────────────────");
     
     let (rete_time, rete_scenarios, rete_matches) = benchmark_rete_engine(&rete_engine, iterations, &test_scenarios);
@@ -114,27 +152,29 @@ async fn main() {
     println!();
     
     let yaml_avg = yaml_time * 1000.0 / (iterations as f64 * test_scenarios.len() as f64);
+    let opt_avg = opt_time * 1000.0 / (iterations as f64 * test_scenarios.len() as f64);
     let rete_avg = rete_time * 1000.0 / (iterations as f64 * test_scenarios.len() as f64);
-    let ratio = if yaml_avg > 0.0 { rete_avg / yaml_avg } else { 1.0 };
     
-    println!("YAML Engine:");
+    println!("YAML Engine (baseline):");
     println!("  • Total time:        {:.2} ms", yaml_time);
     println!("  • Average latency:   {:.3} µs", yaml_avg);
     println!("  • Throughput:        {:.0} req/sec", (iterations as f64 * test_scenarios.len() as f64) / (yaml_time / 1000.0));
+    
+    println!("\nOptimized YAML Engine (pre-compiled regex):");
+    println!("  • Total time:        {:.2} ms", opt_time);
+    println!("  • Average latency:   {:.3} µs", opt_avg);
+    println!("  • Throughput:        {:.0} req/sec", (iterations as f64 * test_scenarios.len() as f64) / (opt_time / 1000.0));
+    let yaml_to_opt_ratio = yaml_avg / opt_avg;
+    println!("  • Speedup vs YAML:   {:.2}x ({:.1}% faster)", yaml_to_opt_ratio, (1.0 - 1.0/yaml_to_opt_ratio) * 100.0);
     
     println!("\nRETE + GRL Engine:");
     println!("  • Total time:        {:.2} ms", rete_time);
     println!("  • Average latency:   {:.3} µs", rete_avg);
     println!("  • Throughput:        {:.0} req/sec", (iterations as f64 * test_scenarios.len() as f64) / (rete_time / 1000.0));
-    
-    println!("\nSpeedup Factor: {:.2}x", ratio);
-    if ratio > 1.0 {
-        println!("  ⚡ RETE is {:.1}% SLOWER than YAML", (ratio - 1.0) * 100.0);
-    } else if ratio < 1.0 {
-        println!("  ✨ RETE is {:.1}% FASTER than YAML", (1.0 - ratio) * 100.0);
-    } else {
-        println!("  ≈ Both engines have similar performance");
-    }
+    let yaml_to_rete_ratio = yaml_avg / rete_avg;
+    println!("  • Speedup vs YAML:   {:.2}x ({:.1}% faster)", yaml_to_rete_ratio, (1.0 - 1.0/yaml_to_rete_ratio) * 100.0);
+    let opt_to_rete_ratio = opt_avg / rete_avg;
+    println!("  • Speedup vs Opt:    {:.2}x ({:.1}% faster)", opt_to_rete_ratio, (1.0 - 1.0/opt_to_rete_ratio) * 100.0);
 
     println!("\nEngine Characteristics:");
     println!("  YAML Engine:");
@@ -142,6 +182,13 @@ async fn main() {
     println!("    • Tree-walking condition evaluation");
     println!("    • First match wins (early exit)");
     println!("    • Complexity: O(r × c × m) where m=match cost");
+    
+    println!("\n  Optimized YAML Engine:");
+    println!("    • Same linear iteration as YAML");
+    println!("    • Pre-compiled regex cache (shared + deduplicated)");
+    println!("    • No regex recompilation per request");
+    println!("    • Reduces hot-path cost for pattern matching");
+    println!("    • Complexity: O(r × c) with cached match cost");
     
     println!("\n  RETE + GRL Engine:");
     println!("    • Pre-compiled network of alpha/terminal nodes");
@@ -156,7 +203,7 @@ async fn main() {
     
     // Build salience map for proper rule priority sorting
     let salience_map = build_salience_map(&rete_engine);
-    compare_rule_accuracy(&yaml_evaluator, &rete_engine, &test_scenarios, &salience_map);
+    compare_rule_accuracy(&yaml_evaluator, &optimized_evaluator, &rete_engine, &test_scenarios, &salience_map);
 
     println!("\n════════════════════════════════════════════════════════════════════");
 }
@@ -386,16 +433,81 @@ fn benchmark_rete_engine(
     (total_ms, scenario_times, scenario_matches)
 }
 
+fn benchmark_optimized_yaml_engine(
+    evaluator: &OptimizedRuleEvaluator,
+    iterations: usize,
+    scenarios: &[(&str, &str, &str, &str, Option<&str>)],
+) -> (f64, HashMap<String, f64>, HashMap<String, String>) {
+    let mut scenario_times: HashMap<String, f64> = HashMap::new();
+    let mut scenario_matches: HashMap<String, String> = HashMap::new();
+
+    let total_start = Instant::now();
+
+    for _ in 0..iterations {
+        for (name, ip, method, path, payload) in scenarios {
+            let headers = {
+                let mut h = HashMap::new();
+                h.insert("User-Agent".to_string(), "Mozilla/5.0".to_string());
+                h.insert("Content-Type".to_string(), "application/json".to_string());
+                h
+            };
+
+            let payload_bytes = payload.unwrap_or("").as_bytes();
+            let cookies = HashMap::new();
+
+            let ctx = OptimizedRequestContext {
+                ip,
+                path,
+                method,
+                headers: &headers,
+                payload: payload_bytes,
+                cookies: &cookies,
+                tier: waf_types::tier::Tier::CatchAll,
+                session_id: "",
+                device_fp: "",
+                content_type: Some("application/json"),
+            };
+
+            let start = Instant::now();
+            if let Some(matched) = evaluator.evaluate(&ctx, &[]) {
+                let elapsed = start.elapsed();
+                let latency_us = elapsed.as_secs_f64() * 1_000_000.0;
+                
+                *scenario_times.entry(name.to_string()).or_insert(0.0) += latency_us;
+                scenario_matches.insert(name.to_string(), matched.rule_id.clone());
+            } else {
+                let elapsed = start.elapsed();
+                let latency_us = elapsed.as_secs_f64() * 1_000_000.0;
+                *scenario_times.entry(name.to_string()).or_insert(0.0) += latency_us;
+            }
+        }
+    }
+
+    let total_elapsed = total_start.elapsed();
+    let total_ms = total_elapsed.as_secs_f64() * 1000.0;
+
+    // Average per scenario
+    for latency in scenario_times.values_mut() {
+        *latency /= iterations as f64;
+    }
+
+    (total_ms, scenario_times, scenario_matches)
+}
+
 fn compare_rule_accuracy(
     yaml_evaluator: &RuleEvaluator,
+    opt_evaluator: &OptimizedRuleEvaluator,
     rete_engine: &ReteEngine,
     scenarios: &[(&str, &str, &str, &str, Option<&str>)],
     salience_map: &HashMap<String, i32>,
 ) {
-    println!("Testing each scenario with both engines...\n");
+    println!("Testing each scenario with all three engines...\n");
 
-    let mut agreement_count = 0;
-    let mut disagreement_count = 0;
+    let mut yaml_opt_agree = 0;
+    let mut yaml_rete_agree = 0;
+    let mut opt_rete_agree = 0;
+    let mut all_three_agree = 0;
+    let mut scenario_count = 0;
 
     for (name, ip, method, path, payload) in scenarios {
         // Test YAML engine
@@ -423,6 +535,33 @@ fn compare_rule_accuracy(
 
         let yaml_result = yaml_evaluator.evaluate(&yaml_ctx, &[]);
         let yaml_matched = yaml_result.map(|m| m.rule_id.clone()).unwrap_or_default();
+
+        // Test Optimized YAML engine
+        let opt_payload = payload.unwrap_or("").as_bytes();
+        let opt_cookies = HashMap::new();
+        let opt_headers = {
+            let mut h = HashMap::new();
+            h.insert("User-Agent".to_string(), "Mozilla/5.0".to_string());
+            h.insert("Content-Type".to_string(), "application/json".to_string());
+            h
+        };
+
+        let opt_ctx = OptimizedRequestContext {
+            ip,
+            path,
+            method,
+            headers: &opt_headers,
+            payload: opt_payload,
+            cookies: &opt_cookies,
+            tier: waf_types::tier::Tier::CatchAll,
+            session_id: "",
+            device_fp: "",
+            content_type: Some("application/json"),
+        };
+
+        let opt_matched = opt_evaluator.evaluate(&opt_ctx, &[])
+            .map(|m| m.rule_id.clone())
+            .unwrap_or_default();
 
         // Test RETE engine
         let rete_headers = {
@@ -474,29 +613,30 @@ fn compare_rule_accuracy(
             .cloned()
             .unwrap_or_default();
 
-        // Compare results
-        let agreement = yaml_matched == rete_matched;
-        if agreement {
-            agreement_count += 1;
-        } else {
-            disagreement_count += 1;
+        // Track agreements
+        let yaml_opt_match = yaml_matched == opt_matched;
+        let yaml_rete_match = yaml_matched == rete_matched;
+        let opt_rete_match = opt_matched == rete_matched;
+        
+        if yaml_opt_match { yaml_opt_agree += 1; }
+        if yaml_rete_match { yaml_rete_agree += 1; }
+        if opt_rete_match { opt_rete_agree += 1; }
+        if yaml_opt_match && yaml_rete_match && opt_rete_match {
+            all_three_agree += 1;
         }
+        
+        scenario_count += 1;
 
         // Display comparison
-        let status = if agreement { "✓ MATCH" } else { "✗ DIFFER" };
-        println!("Scenario: {}", name);
-        println!("  {}", status);
-        println!("    YAML Engine:  {}", if yaml_matched.is_empty() { "(no match)".to_string() } else { yaml_matched });
-        println!("    RETE Engine:  {}", if rete_matched.is_empty() { "(no match)".to_string() } else { rete_matched });
-        
-        // Show all matched rules from RETE (in case multiple rules matched)
-        if !rete_outcome.matched_rules.is_empty() && rete_outcome.matched_rules.len() > 1 {
-            println!("    RETE all matches: {:?}", rete_outcome.matched_rules);
-        }
+        let match_symbol = if yaml_opt_match && yaml_rete_match { "✓" } else { "✗" };
+        println!("Scenario: {} {}", name, match_symbol);
+        println!("  YAML:          {}", if yaml_matched.is_empty() { "(no match)".to_string() } else { yaml_matched });
+        println!("  Optimized:     {}", if opt_matched.is_empty() { "(no match)".to_string() } else { opt_matched });
+        println!("  RETE:          {}", if rete_matched.is_empty() { "(no match)".to_string() } else { rete_matched });
         
         // Show outcome details
         if let Some(reason) = &rete_outcome.block_reason {
-            println!("    RETE action: BLOCK ({})", reason);
+            println!("  RETE action: BLOCK ({})", reason);
         }
         println!();
     }
@@ -504,14 +644,22 @@ fn compare_rule_accuracy(
     println!("\n════════════════════════════════════════════════════════════════════");
     println!("Accuracy Summary:");
     println!();
-    let total = scenarios.len();
-    let agreement_pct = if total > 0 { (agreement_count as f64 / total as f64) * 100.0 } else { 0.0 };
+    println!("Total scenarios tested: {}", scenario_count);
+    let yaml_opt_agree_pct = if scenario_count > 0 { (yaml_opt_agree as f64 / scenario_count as f64) * 100.0 } else { 0.0 };
+    let yaml_rete_agree_pct = if scenario_count > 0 { (yaml_rete_agree as f64 / scenario_count as f64) * 100.0 } else { 0.0 };
+    let opt_rete_agree_pct = if scenario_count > 0 { (opt_rete_agree as f64 / scenario_count as f64) * 100.0 } else { 0.0 };
+    let all_three_pct = if scenario_count > 0 { (all_three_agree as f64 / scenario_count as f64) * 100.0 } else { 0.0 };
     
-    println!("  • Agreement:   {} / {} ({:.1}%)", agreement_count, total, agreement_pct);
-    println!("  • Disagreement: {} / {} ({:.1}%)", disagreement_count, total, (100.0 - agreement_pct));
+    println!();
+    println!("Pairwise Agreement:");
+    println!("  YAML ↔ Optimized: {}/{} ({:.1}%)", yaml_opt_agree, scenario_count, yaml_opt_agree_pct);
+    println!("  YAML ↔ RETE:      {}/{} ({:.1}%)", yaml_rete_agree, scenario_count, yaml_rete_agree_pct);
+    println!("  Optimized ↔ RETE: {}/{} ({:.1}%)", opt_rete_agree, scenario_count, opt_rete_agree_pct);
+    println!();
+    println!("All Three Engines Agree: {}/{} ({:.1}%)", all_three_agree, scenario_count, all_three_pct);
 
-    if agreement_pct < 100.0 {
-        println!("\n⚠ Engines produce different results!");
+    if all_three_pct < 100.0 {
+        println!("\n⚠ Warning: Engines produce different results!");
         println!("  Possible causes:");
         println!("    1. YAML-to-GRL conversion may be incomplete");
         println!("    2. RequestContext field mapping differences");

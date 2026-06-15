@@ -1,0 +1,14 @@
+[package]
+name = "optimized_rule"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true }
+regex = { workspace = true }
+waf-types = { path = "../waf-types" }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+ipnet = { workspace = true }
