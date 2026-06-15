@@ -1,0 +1,15 @@
+[package]
+name    = "waf-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+waf-types   = { path = "../waf-types" }
+waf-engine  = { path = "../waf-engine" }
+tokio       = { workspace = true }
+axum        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+anyhow      = { workspace = true }
+thiserror   = { workspace = true }
+tracing     = { workspace = true }

@@ -1,0 +1,46 @@
+meta:
+  author: airween
+  description: A Selection of tests to trigger rule 920171
+rule_id: 920171
+tests:
+- test_id: 1
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      encoded_request: 'UE9TVCAvIEhUVFAvMS4xDQpBY2NlcHQ6ICovKg0KSG9zdDogbG9jYWxob3N0DQpUcmFuc2Zlci1F
+
+        bmNvZGluZzogY2h1bmtlZA0KVXNlci1BZ2VudDogTW9kU2VjdXJpdHkgQ1JTIDMgVGVzdHMNCg0K
+
+        Mw0KSGkgDQozDQpDUlMNCjANCg0K'
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404
+- test_id: 2
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      encoded_request: 'R0VUIC8gSFRUUC8xLjENCkFjY2VwdDogKi8qDQpIb3N0OiBsb2NhbGhvc3QNClRyYW5zZmVyLUVu
+
+        Y29kaW5nOiBjaHVua2VkDQpVc2VyLUFnZW50OiBNb2RTZWN1cml0eSBDUlMgMyBUZXN0cw0KDQoz
+
+        DQpIaSANCjMNCkNSUw0KMA0KDQo='
+      protocol: http
+    output:
+      status: 403
+- test_id: 3
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      encoded_request: 'SEVBRCAvIEhUVFAvMS4xDQpBY2NlcHQ6ICovKg0KSG9zdDogbG9jYWxob3N0DQpUcmFuc2Zlci1F
+
+        bmNvZGluZzogY2h1bmtlZA0KVXNlci1BZ2VudDogTW9kU2VjdXJpdHkgQ1JTIDMgVGVzdHMNCg0K
+
+        Mw0KSGkgDQozDQpDUlMNCjANCg0K'
+      protocol: http
+    output:
+      status: 403

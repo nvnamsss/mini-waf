@@ -1,0 +1,79 @@
+# WAF configuration — loaded at startup, some fields hot-patchable via /api/config
+
+[server]
+bind     = "0.0.0.0:8111"
+upstream = "http://127.0.0.1:33333"
+
+# Named backend upstreams — referenced by routing rules via upstream_backend.
+[server.backends]
+go     = "http://127.0.0.1:33333"
+python = "http://127.0.0.1:33334"
+java   = "http://127.0.0.1:33335"
+
+[rules]
+dir     = "config/rules"
+crs_dir = "config/rules/crs"
+# blacklist_file = "config/data/blacklist.txt"   # newline-delimited IPs/CIDRs
+
+# ── Geo-blocking ─────────────────────────────────────────────────────────────
+# Geo-blocking via MaxMind GeoLite2-Country database (optional).
+# Obtain the free DB from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+# and place it at the path below, then uncomment db_path.
+[geo]
+# db_path         = "config/geo/GeoLite2-Country.mmdb"
+# country_headers = ["X-My-Country"]   # extra headers to check (beyond CF-IPCountry etc.)
+blocked_countries = []                  # e.g. ["KP", "IR", "CU"] — empty = no geo-blocking
+
+[dashboard_api]
+bind = "0.0.0.0:8112"
+
+# ── Protection tiers ──────────────────────────────────────────────────────────
+[tiers.critical]
+tier      = "critical"
+routes    = ["/login", "/otp", "/deposit", "/withdrawal"]
+fail_mode = "close"
+max_rps_per_ip      = 10
+max_rps_per_session = 5
+
+[tiers.high]
+tier      = "high"
+routes    = ["/game/*", "/api/*", "/user/*"]
+fail_mode = "open"
+max_rps_per_ip      = 100
+max_rps_per_session = 60
+
+[tiers.medium]
+tier          = "medium"
+routes        = ["/static/*", "/assets/*", "/public/*"]
+fail_mode     = "open"
+cache_ttl_secs = 300
+max_rps_per_ip = 500
+
+[tiers.catch_all]
+tier      = "catch_all"
+routes    = ["/**"]
+fail_mode = "open"
+max_rps_per_ip = 200
+
+# ── Risk engine ───────────────────────────────────────────────────────────────
+[risk]
+allow_threshold     = 30   # score < 30 → Allow
+challenge_threshold = 70   # score 30–70 → Challenge; score > 70 → Block
+
+# ── Rate limiting defaults ────────────────────────────────────────────────────
+[rate_limit]
+default_rps_per_ip      = 100
+default_rps_per_session = 50
+
+# ── Response cache ────────────────────────────────────────────────────────────
+[cache]
+ttl_medium_secs = 300
+
+# ── Upstream circuit breaker ──────────────────────────────────────────────────
+[circuit_breaker]
+failure_threshold = 5    # consecutive failures before circuit opens
+recovery_secs     = 30   # seconds before a probe request is allowed
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+[audit]
+log_path = "logs/audit.jsonl"

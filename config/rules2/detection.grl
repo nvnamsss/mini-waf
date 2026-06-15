@@ -1,0 +1,109 @@
+// Detection rules — applied globally to every request.
+//
+// Higher salience fires first. `block(reason)` short-circuits the engine.
+// `Request.RiskScore` accumulates additional risk for downstream stages.
+
+// ── IP blacklist ──────────────────────────────────────────────────────────────
+//
+// ip_in_blacklist(ip) — true when ip matches any entry in the loaded blacklist.
+// The list is loaded from disk at startup (see [rules] blacklist_file in waf.toml).
+// IpSet uses HashSet<IpAddr> for exact IPs (O(1)) and Vec<IpNet> for CIDRs,
+// so 100k-entry lists add negligible per-request overhead.
+rule "BlockBlacklisted" salience 970 {
+    when ip_in_blacklist(Request.ClientIp)
+    then
+        Request.RiskScore = Request.RiskScore + 100;
+        block("ip blacklisted");
+}
+
+
+//
+// Country resolution order (handled internally by the GeoPlugin):
+//   1. Request header (CF-IPCountry, X-Country, X-GeoIP-Country, …)
+//   2. MaxMind GeoLite2-Country DB lookup on the canonical client IP
+//
+// GetCountry()     — returns the ISO-3166-1 alpha-2 country code
+// GetCountry(ip)   — explicit IP lookup (e.g. for XFF chain inspection)
+// geo_blocked()    — true when GetCountry() is in the config blocked_countries list
+rule "GeoBlock" salience 960 {
+    when geo_blocked()
+    then
+        Request.RiskScore = Request.RiskScore + 80;
+        block("geo-block");
+}
+
+// Block all traffic originating from Vietnam (VN).
+// Country is resolved from CDN headers first (CF-IPCountry, X-Country, …),
+// then falls back to a MaxMind DB lookup on the canonical client IP.
+rule "GeoBlockVN" salience 955 {
+    when GetCountry() == "VN"
+    then
+        Request.RiskScore = Request.RiskScore + 80;
+        block("geo-block-vn");
+}
+
+// CRS anomaly scoring: fires when the OWASP Core Rule Set inbound score >= 5.
+// This covers SQLi, XSS, LFI, RCE, PHP attacks, and scanner detection.
+rule "CrsBlock" salience 1000 {
+    when  crs_score() >= 5
+    then
+        Request.RiskScore = Request.RiskScore + 90;
+        block("crs");
+}
+
+rule "BlockSqli" salience 900 {
+    when contains_sqli(Request.Query) || contains_sqli(Request.Body)
+    then
+        Request.RiskScore = Request.RiskScore + 80;
+        block("sqli detected");
+}
+
+rule "BlockXss" salience 890 {
+    when contains_xss(Request.Query) || contains_xss(Request.Body)
+    then
+        Request.RiskScore = Request.RiskScore + 70;
+        block("xss detected");
+}
+
+rule "BlockPathTraversal" salience 880 {
+    when contains_path_traversal(Request.Path) || contains_path_traversal(Request.Query)
+    then
+        Request.RiskScore = Request.RiskScore + 90;
+        block("path traversal detected");
+}
+
+rule "BlockSensitivePath" salience 875 {
+    when starts_with(Request.Path, "/etc/")
+      || starts_with(Request.Path, "/proc/")
+      || starts_with(Request.Path, "/.git/")
+      || Request.Path == "/.env"
+      || ends_with(Request.Path, "/passwd")
+      || ends_with(Request.Path, "/shadow")
+    then
+        Request.RiskScore = Request.RiskScore + 90;
+        block("sensitive path access");
+}
+
+rule "BlockSsrf" salience 870 {
+    when contains(Request.Body, "169.254.169.254")
+      || contains(Request.Query, "169.254.169.254")
+      || contains(Request.Body, "file://")
+      || contains(Request.Query, "file://")
+    then
+        Request.RiskScore = Request.RiskScore + 95;
+        block("ssrf detected");
+}
+
+rule "BlockHeaderInjection" salience 860 {
+    when contains_header_injection(Request.Path) || contains_header_injection(Request.Query)
+    then
+        Request.RiskScore = Request.RiskScore + 80;
+        block("header injection detected");
+}
+
+rule "BlockCanaryAdminTest" salience 850 {
+    when Request.Path == "/admin-test" || Request.Path == "/api-debug"
+    then
+        Request.RiskScore = Request.RiskScore + 100;
+        block("canary endpoint hit");
+}

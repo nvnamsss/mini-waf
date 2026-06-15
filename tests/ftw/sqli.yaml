@@ -1,0 +1,143 @@
+---
+meta:
+  author: "mini-waf"
+  description: "SQL Injection detection tests"
+  name: "sqli.yaml"
+rule_id: 1001
+tests:
+  - test_id: 1
+    desc: "Classic OR 1=1 in query string"
+    stages:
+      - input:
+          uri: "/search?q=1'+OR+1=1--"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 2
+    desc: "UNION SELECT in query string"
+    stages:
+      - input:
+          uri: "/search?id=1+UNION+SELECT+NULL,NULL--"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 3
+    desc: "Benign search query should pass"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200
+
+  - test_id: 4
+    desc: "SQLi in POST form body"
+    stages:
+      - input:
+          uri: "/login"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "username=admin'--&password=x"
+        output:
+          status: 403
+
+  - test_id: 5
+    desc: "Time-based blind SQLi SLEEP()"
+    stages:
+      - input:
+          uri: "/item?id=1;SELECT+SLEEP(5)--"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 6
+    desc: "Error-based SQLi extractvalue"
+    stages:
+      - input:
+          uri: "/item?id=1+AND+extractvalue(1,concat(0x7e,version()))--"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 7
+    desc: "Stacked queries with semicolon"
+    stages:
+      - input:
+          uri: "/item?id=1;DROP+TABLE+users--"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 8
+    desc: "SQLi in cookie header"
+    stages:
+      - input:
+          uri: "/profile"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Cookie: "session=1' OR '1'='1"
+        output:
+          status: 403
+
+  - test_id: 9
+    desc: "Boolean-based blind - equality check"
+    stages:
+      - input:
+          uri: "/user?id=1+AND+1=1"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 10
+    desc: "Benign POST login should pass"
+    stages:
+      - input:
+          uri: "/login"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "username=alice&password=hunter2"
+        output:
+          status: 200
+
+  - test_id: 11
+    desc: "Benign API with numeric ID should pass"
+    stages:
+      - input:
+          uri: "/user/42"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200

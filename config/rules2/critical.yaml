@@ -1,0 +1,44 @@
+# CRITICAL tier rules — /login /otp /deposit /withdrawal
+# All checks maximally strict; fail-close on WAF error.
+
+- id: critical-rate-limit-ip
+  priority: 100
+  scope:
+    type: tier
+    tier: critical
+  condition:
+    type: rate_limit_exceeded
+  action: rate_limit
+  risk_score_delta: 30
+
+- id: critical-brute-force-detect
+  priority: 90
+  scope:
+    type: tier
+    tier: critical
+  condition:
+    type: sqli_pattern   # placeholder — will be brute_force_pattern
+  action: block
+  risk_score_delta: 50
+
+- id: critical-zero-depth-session
+  priority: 85
+  scope:
+    type: tier
+    tier: critical
+  condition:
+    type: payload_regex
+    pattern: "^$"         # placeholder — will be zero_depth_session condition
+  action: challenge
+  risk_score_delta: 40
+
+- id: critical-transaction-velocity
+  priority: 80
+  scope:
+    type: tier
+    tier: critical
+  condition:
+    type: payload_regex
+    pattern: ".*"         # placeholder — will be transaction_velocity condition
+  action: block
+  risk_score_delta: 60

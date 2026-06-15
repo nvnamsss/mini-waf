@@ -1,0 +1,11 @@
+# IP blacklist — loaded at startup when [rules] blacklist_file is set in waf.toml.
+# One entry per line. Blank lines and lines starting with '#' are ignored.
+# Supports both exact IPs and CIDR ranges:
+#
+#   192.168.1.1
+#   10.0.0.0/8
+#   2001:db8::1
+#   2001:db8::/32
+#
+# For 100k+ entries the engine uses a HashSet<IpAddr> for exact IPs (O(1))
+# and a Vec<IpNet> for CIDR ranges (O(n_cidrs)), so lookup stays fast.

@@ -1,0 +1,17 @@
+rules:
+  - id: "hotlink-protect"
+    source: "system"
+    description: "Log requests for static assets missing Referer"
+    tier: "MEDIUM"
+    priority: 50
+    condition:
+      and:
+        - field: header
+          header_name: "referer"
+          match: absence
+          value: ""
+        - field: path
+          match: wildcard
+          value: "/static/**"
+    action: log
+    risk_score_delta: 2

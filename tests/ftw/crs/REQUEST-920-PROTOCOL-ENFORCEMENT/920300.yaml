@@ -1,0 +1,78 @@
+meta:
+  author: csanders-git, azurit
+rule_id: 920300
+tests:
+- test_id: 1
+  desc: Request Missing an Accept Header (920300) from old modsec regressions
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Accept-Encoding: gzip,deflate
+        Accept-Language: en-us,en;q=0.5
+        Host: localhost
+        Keep-Alive: '300'
+        Proxy-Connection: keep-alive
+        User-Agent: OWASP CRS test agent
+      method: GET
+      port: 8111
+      uri: /
+      version: HTTP/1.1
+      data: ''
+      protocol: http
+    output:
+      status: 403
+- test_id: 2
+  desc: 'OPTIONS request: exempt from requiring an Accept request header'
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+      method: OPTIONS
+      uri: '*'
+      version: HTTP/1.1
+      port: 8111
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404
+- test_id: 3
+  desc: 'CONNECT request: exempt from requiring an Accept request header'
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Proxy-Connection: Keep-Alive
+      method: CONNECT
+      uri: www.coreruleset.org:80
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404
+- test_id: 4
+  desc: 'User-Agent containing AppleWebKit: exempt from requiring an Accept request
+    header'
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent; AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169
+          Safari/537.36
+      method: GET
+      uri: /
+      version: HTTP/1.1
+      port: 8111
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404

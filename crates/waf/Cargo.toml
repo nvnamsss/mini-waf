@@ -1,0 +1,19 @@
+[package]
+name    = "waf"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "waf"
+path = "src/main.rs"
+
+[dependencies]
+waf-types   = { path = "../waf-types" }
+waf-engine  = { path = "../waf-engine" }
+waf-proxy   = { path = "../waf-proxy" }
+waf-api     = { path = "../waf-api" }
+tokio       = { workspace = true }
+clap        = { workspace = true }
+anyhow      = { workspace = true }
+tracing     = { workspace = true }
+tracing-subscriber = { workspace = true }

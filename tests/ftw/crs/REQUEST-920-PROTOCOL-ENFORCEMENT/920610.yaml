@@ -1,0 +1,36 @@
+meta:
+  author: karelorigin, azurit
+  description: Tests for 920610
+rule_id: 920610
+tests:
+- test_id: 1
+  desc: Encoded URL fragment false positive test
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      uri: /%23fragment
+      headers:
+        User-Agent: OWASP CRS test agent
+        Host: localhost
+        Accept: text/html;q=0.9,*/*;q=0.8
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404
+- test_id: 2
+  desc: Raw URL fragment test
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      uri: /#fragment
+      headers:
+        User-Agent: OWASP CRS test agent
+        Host: localhost
+        Accept: text/html;q=0.9,*/*;q=0.8
+      protocol: http
+    output:
+      status: 400

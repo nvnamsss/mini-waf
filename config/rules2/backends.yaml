@@ -1,0 +1,95 @@
+# Backend routing rules — path-based upstream selection.
+#
+# Each rule with `upstream_backend` set routes matching requests to the named
+# backend defined in [server.backends] in waf.toml.
+#
+# Rules are evaluated in ascending priority order (lower number = first).
+# The first matching rule wins; unmatched requests fall back to [server.upstream].
+#
+# Route map:
+#   /login, /otp, /deposit, /withdrawal  →  java   (:33335)
+#   /api/*, /user/*, /game/*             →  python (:33334)
+#   /**  (everything else)               →  go     (:33333)
+
+# ── Critical routes → Java (Spring Boot) ────────────────────────────────────
+- id: route-login-java
+  priority: 50
+  scope: global
+  condition:
+    type: path_exact
+    value: /login
+  action: allow
+  upstream_backend: java
+  risk_score_delta: 0
+
+- id: route-otp-java
+  priority: 50
+  scope: global
+  condition:
+    type: path_exact
+    value: /otp
+  action: allow
+  upstream_backend: java
+  risk_score_delta: 0
+
+- id: route-deposit-java
+  priority: 50
+  scope: global
+  condition:
+    type: path_exact
+    value: /deposit
+  action: allow
+  upstream_backend: java
+  risk_score_delta: 0
+
+- id: route-withdrawal-java
+  priority: 50
+  scope: global
+  condition:
+    type: path_exact
+    value: /withdrawal
+  action: allow
+  upstream_backend: java
+  risk_score_delta: 0
+
+# ── API / game / user routes → Python (FastAPI) ──────────────────────────────
+- id: route-api-python
+  priority: 60
+  scope: global
+  condition:
+    type: path_wildcard
+    pattern: "/api/*"
+  action: allow
+  upstream_backend: python
+  risk_score_delta: 0
+
+- id: route-user-python
+  priority: 60
+  scope: global
+  condition:
+    type: path_wildcard
+    pattern: "/user/*"
+  action: allow
+  upstream_backend: python
+  risk_score_delta: 0
+
+- id: route-game-python
+  priority: 60
+  scope: global
+  condition:
+    type: path_wildcard
+    pattern: "/game/*"
+  action: allow
+  upstream_backend: python
+  risk_score_delta: 0
+
+# ── Default → Go (Gin) ───────────────────────────────────────────────────────
+- id: route-default-go
+  priority: 999
+  scope: global
+  condition:
+    type: path_wildcard
+    pattern: "/**"
+  action: allow
+  upstream_backend: go
+  risk_score_delta: 0

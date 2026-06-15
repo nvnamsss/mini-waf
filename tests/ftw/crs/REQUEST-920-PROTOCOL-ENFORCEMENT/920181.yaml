@@ -1,0 +1,25 @@
+meta:
+  author: fgsch
+rule_id: 920181
+tests:
+- test_id: 1
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      method: POST
+      uri: /anything
+      headers:
+        Host: localhost
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+        Content-Length: 7
+        Content-Type: application/x-www-form-urlencoded
+        Transfer-Encoding: chunked
+        User-Agent: OWASP CRS test agent
+      data: "7\r\nfoo=bar\r\n0\r\n\r\n"
+      autocomplete_headers: false
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404

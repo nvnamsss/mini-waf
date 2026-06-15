@@ -1,0 +1,76 @@
+# Global (catch-all) rules — applied to every request regardless of tier.
+# These are evaluated first because of their high priority numbers.
+
+- id: global-block-blacklisted-ip
+  priority: 100
+  scope: global
+  condition:
+    type: ip_in_blacklist
+  action: block
+  risk_score_delta: 100
+
+- id: global-allow-whitelisted-ip
+  priority: 99
+  scope: global
+  condition:
+    type: ip_in_whitelist
+  action: allow
+  risk_score_delta: -10
+
+- id: global-sqli-detect
+  priority: 90
+  scope: global
+  condition:
+    type: sqli_pattern
+  action: block
+  risk_score_delta: 80
+
+- id: global-xss-detect
+  priority: 89
+  scope: global
+  condition:
+    type: xss_pattern
+  action: block
+  risk_score_delta: 70
+
+- id: global-path-traversal
+  priority: 88
+  scope: global
+  condition:
+    type: path_traversal_pattern
+  action: block
+  risk_score_delta: 70
+
+- id: global-ssrf-detect
+  priority: 87
+  scope: global
+  condition:
+    type: ssrf_pattern
+  action: block
+  risk_score_delta: 80
+
+- id: global-header-injection
+  priority: 86
+  scope: global
+  condition:
+    type: header_injection_pattern
+  action: block
+  risk_score_delta: 60
+
+- id: global-canary-admin-test
+  priority: 200
+  scope: global
+  condition:
+    type: path_exact
+    value: "/admin-test"
+  action: block
+  risk_score_delta: 100
+
+- id: global-canary-api-debug
+  priority: 200
+  scope: global
+  condition:
+    type: path_exact
+    value: "/api-debug"
+  action: block
+  risk_score_delta: 100

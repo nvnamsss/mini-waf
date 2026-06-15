@@ -1,0 +1,47 @@
+meta:
+  author: csanders-git, azurit
+rule_id: 920280
+tests:
+- test_id: 1
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      version: HTTP/1.0
+      headers:
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      uri: /
+      protocol: http
+    output:
+      status: 403
+- test_id: 2
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      headers:
+        User-Agent: OWASP CRS test agent
+        Host: localhost
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      uri: /
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status:
+      - 200
+      - 404
+- test_id: 3
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      port: 8111
+      version: HTTP/0.9
+      headers:
+        User-Agent: OWASP CRS test agent
+        Host: localhost
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      uri: /
+      protocol: http
+    output:
+      status: 400

@@ -1,0 +1,56 @@
+[workspace]
+members  = ["crates/*"]
+resolver = "2"
+exclude  = ["rule"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+# --------------------------------------------------------------------------
+# Shared dependency versions — individual crates opt-in via { workspace = true }
+# --------------------------------------------------------------------------
+[workspace.dependencies]
+# async runtime
+tokio              = { version = "1",   features = ["full"] }
+tokio-util         = { version = "0.7" }
+
+# HTTP
+hyper              = { version = "1",   features = ["full"] }
+hyper-util         = { version = "0.1", features = ["client-legacy", "http1", "tokio", "server", "server-auto"] }
+axum               = { version = "0.7", features = ["ws"] }
+bytes              = "1"
+http-body-util     = "0.1"
+
+# serialisation
+serde              = { version = "1",   features = ["derive"] }
+serde_json         = "1"
+serde_yaml         = "0.9"
+toml               = "0.8"
+
+# error handling
+anyhow             = "1"
+thiserror          = "1"
+
+# observability
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# CLI
+clap               = { version = "4",   features = ["derive"] }
+
+# ids / time
+chrono             = { version = "0.4", features = ["serde"] }
+uuid               = { version = "1",   features = ["v4", "serde"] }
+
+# file-watch (hot-reload rules)
+notify             = "6"
+
+# rule engine (GRL parser + RETE)
+pest               = "2"
+pest_derive        = "2"
+regex              = "1"
+ipnet              = "2"
+aho-corasick       = "1"
+maxminddb          = "0.23"
+criterion          = { version = "0.5", features = ["html_reports"] }

@@ -1,0 +1,33 @@
+# HIGH tier rules — /game/* /api/* /user/*
+# Strong protection with DDoS mitigation and bot filtering.
+
+- id: high-rate-limit-ip
+  priority: 100
+  scope:
+    type: tier
+    tier: high
+  condition:
+    type: rate_limit_exceeded
+  action: rate_limit
+  risk_score_delta: 20
+
+- id: high-bot-challenge
+  priority: 80
+  scope:
+    type: tier
+    tier: high
+  condition:
+    type: payload_regex
+    pattern: ".*"         # placeholder — will be bot_score_high condition
+  action: challenge
+  risk_score_delta: 30
+
+- id: high-sqli-body
+  priority: 90
+  scope:
+    type: tier
+    tier: high
+  condition:
+    type: sqli_pattern
+  action: block
+  risk_score_delta: 80

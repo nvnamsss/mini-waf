@@ -1,0 +1,46 @@
+[package]
+name    = "waf-engine"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "engine-demo"
+path = "src/bin/engine_demo.rs"
+
+[[bin]]
+name = "compare-engines"
+path = "src/bin/compare_engines_real.rs"
+
+[[bin]]
+name = "compare-rule-engines"
+path = "src/bin/compare_rule_engines.rs"
+
+[dependencies]
+waf-types   = { path = "../waf-types" }
+rule        = { path = "../rule" }
+tokio       = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+serde_yaml  = { workspace = true }
+toml        = { workspace = true }
+anyhow      = { workspace = true }
+thiserror   = { workspace = true }
+tracing     = { workspace = true }
+chrono      = { workspace = true }
+uuid        = { workspace = true }
+notify      = { workspace = true }
+pest        = { workspace = true }
+pest_derive = { workspace = true }
+regex        = { workspace = true }
+ipnet        = { workspace = true }
+aho-corasick = { workspace = true }
+maxminddb   = { workspace = true }
+tracing-subscriber = { workspace = true }
+zentinel-modsec = "0.1"
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name    = "engine_bench"
+harness = false

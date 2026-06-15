@@ -1,0 +1,54 @@
+// GRL — Grule Rule Language (subset for mini-waf)
+//
+// Example:
+//   rule "BlockSqli" salience 90 {
+//       when contains_sqli(Request.Query) || contains_sqli(Request.Body)
+//       then
+//           Request.RiskScore = Request.RiskScore + 80;
+//           block("sqli detected");
+//   }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+file       = { SOI ~ rule_def* ~ EOI }
+
+rule_def   = { "rule" ~ string ~ ("salience" ~ integer)? ~ "{"
+               ~ "when" ~ expression
+               ~ "then" ~ statement+
+               ~ "}" }
+
+// ── Statements ────────────────────────────────────────────────────────────
+statement  = { (assignment | call_stmt) ~ ";" }
+assignment = { path ~ "=" ~ expression }
+call_stmt  = { call_expr }
+
+// ── Expressions (precedence climb) ────────────────────────────────────────
+expression = { or_expr }
+or_expr    = { and_expr ~ ("||" ~ and_expr)* }
+and_expr   = { not_expr ~ ("&&" ~ not_expr)* }
+not_expr   = { not_op? ~ cmp_expr }
+not_op     = { "!" }
+cmp_expr   = { add_expr ~ (cmp_op ~ add_expr)? }
+cmp_op     = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
+add_expr   = { mul_expr ~ (add_op ~ mul_expr)* }
+add_op     = { "+" | "-" }
+mul_expr   = { primary ~ (mul_op ~ primary)* }
+mul_op     = { "*" | "/" }
+
+primary    = { literal | call_expr | path | "(" ~ expression ~ ")" }
+
+call_expr  = { ident ~ "(" ~ arg_list? ~ ")" }
+arg_list   = { expression ~ ("," ~ expression)* }
+
+path       = { ident ~ ("." ~ ident | "[" ~ string ~ "]")* }
+
+// ── Atoms ─────────────────────────────────────────────────────────────────
+literal    = { string | float | integer | bool_lit | null_lit }
+bool_lit   = @{ ("true" | "false") ~ !(ASCII_ALPHANUMERIC | "_") }
+null_lit   = @{ "null" ~ !(ASCII_ALPHANUMERIC | "_") }
+ident      = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+integer    = @{ "-"? ~ ASCII_DIGIT+ }
+float      = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+string     = @{ "\"" ~ inner_str ~ "\"" }
+inner_str  = @{ (!"\"" ~ ("\\\"" | ANY))* }

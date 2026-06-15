@@ -1,0 +1,132 @@
+---
+meta:
+  author: "mini-waf"
+  description: "XSS detection tests"
+  name: "xss.yaml"
+rule_id: 1002
+tests:
+  - test_id: 1
+    desc: "Script tag in query string (URL-encoded)"
+    stages:
+      - input:
+          uri: "/search?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 2
+    desc: "XSS in POST body"
+    stages:
+      - input:
+          uri: "/comment"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "comment=<script>alert(document.cookie)</script>"
+        output:
+          status: 403
+
+  - test_id: 3
+    desc: "Benign request should pass through to backend"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200
+
+  - test_id: 4
+    desc: "img onerror XSS"
+    stages:
+      - input:
+          uri: "/search?q=%3Cimg+src%3Dx+onerror%3Dalert(1)%3E"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 5
+    desc: "SVG onload XSS"
+    stages:
+      - input:
+          uri: "/page?src=%3Csvg+onload%3Dalert(1)%3E"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 6
+    desc: "javascript: protocol XSS"
+    stages:
+      - input:
+          uri: "/redirect?url=javascript:alert(document.domain)"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 7
+    desc: "Event handler attribute XSS in POST"
+    stages:
+      - input:
+          uri: "/comment"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "name=<a+href%3D#+onclick%3Dalert(1)>click</a>"
+        output:
+          status: 403
+
+  - test_id: 8
+    desc: "XSS via HTML entity bypass attempt"
+    stages:
+      - input:
+          uri: "/search?q=%3Cscript%3Ealert%28%27xss%27%29%3C%2Fscript%3E"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 9
+    desc: "Benign HTML-like content in search should pass"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200
+
+  - test_id: 10
+    desc: "Benign POST with normal text content should pass"
+    stages:
+      - input:
+          uri: "/login"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "username=bob&password=securepassword123"
+        output:
+          status: 200

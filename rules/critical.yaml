@@ -1,0 +1,152 @@
+rules:
+  - id: "rate-login-ip"
+    source: "system"
+    description: "Rate-limit POST /login per IP — max 10/minute"
+    priority: 20
+    condition:
+      and:
+        - field: method
+          match: exact
+          value: "POST"
+          case_sensitive: true
+        - field: path
+          match: exact
+          value: "/login"
+    action: rate_limit
+    risk_score_delta: 3
+    rate_limit:
+      scope: per-ip
+      window_seconds: 60
+      max_requests: 10
+      burst_tokens: 1
+      on_breach: challenge
+
+  - id: "rate-otp-ip"
+    source: "system"
+    description: "Rate-limit POST /otp per IP — max 5/minute"
+    priority: 21
+    condition:
+      and:
+        - field: method
+          match: exact
+          value: "POST"
+          case_sensitive: true
+        - field: path
+          match: exact
+          value: "/otp"
+    action: rate_limit
+    risk_score_delta: 6
+    rate_limit:
+      scope: per-ip
+      window_seconds: 60
+      max_requests: 5
+      burst_tokens: 1
+      on_breach: block
+
+  - id: "rate-deposit-ip"
+    source: "system"
+    description: "Rate-limit POST /deposit per IP — max 20/minute"
+    priority: 22
+    condition:
+      and:
+        - field: method
+          match: exact
+          value: "POST"
+          case_sensitive: true
+        - field: path
+          match: exact
+          value: "/deposit"
+    action: rate_limit
+    risk_score_delta: 2
+    rate_limit:
+      scope: per-ip
+      window_seconds: 60
+      max_requests: 20
+      burst_tokens: 1
+      on_breach: challenge
+
+  - id: "rate-withdrawal-ip"
+    source: "system"
+    description: "Rate-limit POST /withdrawal per IP — max 10/minute"
+    priority: 23
+    condition:
+      and:
+        - field: method
+          match: exact
+          value: "POST"
+          case_sensitive: true
+        - field: path
+          match: exact
+          value: "/withdrawal"
+    action: rate_limit
+    risk_score_delta: 3
+    rate_limit:
+      scope: per-ip
+      window_seconds: 60
+      max_requests: 10
+      burst_tokens: 1
+      on_breach: block
+
+  - id: "sqli-critical-payload"
+    source: "system"
+    description: "Block SQLi in CRITICAL tier request body"
+    tier: "CRITICAL"
+    priority: 25
+    condition:
+      and:
+        - field: payload
+          match: regex
+          value: '(?i)(union\s+select|information_schema|sleep\s*\(|waitfor\s+delay)'
+    action: block
+    risk_score_delta: 70
+    response:
+      status: 403
+      body: "Request blocked."
+
+  # JWT "alg":"none" forgery detection — JWS specifies an unsigned token type
+  # whose signature is empty, allowing an attacker who swaps the header to
+  # forge arbitrary claims. The Base64Url encoding of common header variants
+  # is matched directly (no token parsing needed). Examples:
+  #   {"alg":"none"}              → eyJhbGciOiJub25lIn0
+  #   {"alg":"none","typ":"JWT"}  → eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0
+  #   {"alg":"None"} / {"alg":"NONE"} / mixed case variants
+  #   {"alg": "none"} (with space) → eyJhbGciOiAibm9uZSI...
+  #   {"typ":"JWT","alg":"none"}   → ...LCJhbGciOiJub25lI...
+  - id: "jwt-alg-none-detection"
+    source: "system"
+    description: "Block JWT tokens forged with the unsigned alg=none header"
+    priority: 26
+    condition:
+      or:
+        - field: header
+          header_name: "authorization"
+          match: regex
+          value: 'eyJ[A-Za-z0-9_-]{0,120}GciOiJub25l[A-Za-z0-9_-]{0,120}\.'
+        - field: cookie
+          cookie_name: "authorization"
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+        - field: cookie
+          cookie_name: "token"
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+        - field: cookie
+          cookie_name: "jwt"
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+        - field: cookie
+          cookie_name: "access_token"
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+        - field: cookie
+          cookie_name: "id_token"
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+        - field: payload
+          match: regex
+          value: '\beyJ[A-Za-z0-9_-]*?(?:aGciOiJub25l|aGciOiJOT05F|aGciOiJOb25l|aGciOiJuT25F|aGciOiAibm9uZSI|aGciOiAiTk9ORSI|YWxnIjoibm9uZSI|YWxnIjogIm5vbmUi)'
+    action: block
+    risk_score_delta: 80
+    response:
+      status: 401
+      body: "Forged authentication token."

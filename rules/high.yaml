@@ -1,0 +1,72 @@
+rules:
+  - id: "rate-api-default"
+    source: "system"
+    description: "Default rate limit for /api/* per IP"
+    priority: 30
+    condition:
+      and:
+        - field: path
+          match: wildcard
+          value: "/api/**"
+    action: rate_limit
+    risk_score_delta: 1
+    rate_limit:
+      scope: per-ip
+      window_seconds: 60
+      max_requests: 30
+      burst_tokens: 3
+      on_breach: challenge
+
+  - id: "sqli-high-001"
+    source: "system"
+    description: "Block SQLi in HIGH tier"
+    tier: "HIGH"
+    priority: 31
+    condition:
+      or:
+        - field: payload
+          match: regex
+          value: '(?i)(union\s+select|information_schema|sleep\s*\(|benchmark\s*\()'
+        - field: path
+          match: regex
+          value: '(?i)(union\s+select|information_schema)'
+    action: block
+    risk_score_delta: 50
+    response:
+      status: 403
+      body: "Request blocked."
+
+  - id: "ssrf-high-001"
+    source: "system"
+    description: "Block SSRF attempts on /api/* endpoints"
+    tier: "HIGH"
+    priority: 32
+    condition:
+      and:
+        - field: payload
+          match: regex
+          value: '(?i)(localhost|127\.0\.0\.1|169\.254\.169\.254|metadata\.google\.internal|file://|gopher://|dict://)'
+    action: block
+    risk_score_delta: 55
+    response:
+      status: 403
+      body: "Request blocked."
+
+  - id: "rce-high-001"
+    source: "system"
+    description: "Block RCE patterns in HIGH tier"
+    tier: "HIGH"
+    priority: 33
+    condition:
+      or:
+        - field: payload
+          match: regex
+          value: '(?i)(eval\s*\(|exec\s*\(|system\s*\(|passthru\s*\(|shell_exec\s*\(|base64_decode\s*\()'
+        - field: path
+          match: regex
+          value: '(?i)(eval\s*\(|exec\s*\()'
+    action: block
+    risk_score_delta: 70
+    response:
+      status: 403
+      body: "Request blocked."

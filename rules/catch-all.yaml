@@ -1,0 +1,30 @@
+rules:
+  - id: "catchall-bot-ua"
+    source: "system"
+    description: "Challenge requests with known bot user agents"
+    priority: 100
+    condition:
+      and:
+        - field: header
+          header_name: "user-agent"
+          match: regex
+          value: '(?i)(masscan|zgrab|nuclei|sqlmap|nikto|nessus|openvas|nmap|acunetix|burpsuite)'
+    action: challenge
+    risk_score_delta: 30
+    challenge:
+      type: js
+
+  - id: "catchall-recon-paths"
+    source: "system"
+    description: "Block common recon/scanner paths"
+    priority: 101
+    condition:
+      and:
+        - field: path
+          match: regex
+          value: '(?i)(\.env$|\.git/|\.svn/|/phpinfo|/wp-admin|/phpmyadmin|/manager/html|\.bak$|\.sql$)'
+    action: block
+    risk_score_delta: 25
+    response:
+      status: 404
+      body: "Not found."

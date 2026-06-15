@@ -1,0 +1,22 @@
+# MEDIUM tier rules — /static/* /assets/* /public/*
+# Aggressive caching + path traversal protection; latency is priority.
+
+- id: medium-rate-limit-ip
+  priority: 100
+  scope:
+    type: tier
+    tier: medium
+  condition:
+    type: rate_limit_exceeded
+  action: rate_limit
+  risk_score_delta: 10
+
+- id: medium-path-traversal
+  priority: 90
+  scope:
+    type: tier
+    tier: medium
+  condition:
+    type: path_traversal_pattern
+  action: block
+  risk_score_delta: 50

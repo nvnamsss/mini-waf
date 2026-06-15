@@ -1,0 +1,17 @@
+[package]
+name = "rule"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["fs"] }
+waf-types = { path = "../waf-types" }
+
+[dev-dependencies]
+criterion = { workspace = true }

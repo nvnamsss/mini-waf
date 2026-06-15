@@ -1,0 +1,126 @@
+---
+meta:
+  author: "mini-waf"
+  description: "Scanner user-agent and canary endpoint tests"
+  name: "scanners_canary.yaml"
+rule_id: 1004
+tests:
+  - test_id: 1
+    desc: "Nikto scanner user-agent should be blocked"
+    stages:
+      - input:
+          uri: "/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "Nikto/2.1.6"
+        output:
+          status: 403
+
+  - test_id: 2
+    desc: "sqlmap user-agent should be blocked"
+    stages:
+      - input:
+          uri: "/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "sqlmap/1.7"
+        output:
+          status: 403
+
+  - test_id: 3
+    desc: "Canary endpoint /admin-test should be blocked"
+    stages:
+      - input:
+          uri: "/admin-test"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 4
+    desc: "Normal browser user-agent should pass"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        output:
+          status: 200
+
+  - test_id: 5
+    desc: "Nmap Scripting Engine user-agent should be blocked"
+    stages:
+      - input:
+          uri: "/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "Nmap Scripting Engine"
+        output:
+          status: 403
+
+  - test_id: 6
+    desc: "masscan user-agent should be blocked"
+    stages:
+      - input:
+          uri: "/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "masscan/1.3"
+        output:
+          status: 403
+
+  - test_id: 7
+    desc: "Canary endpoint /api-debug should be blocked"
+    stages:
+      - input:
+          uri: "/api-debug"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 8
+    desc: "zgrab scanner user-agent should be blocked"
+    stages:
+      - input:
+          uri: "/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "zgrab/0.x"
+        output:
+          status: 403
+
+  - test_id: 9
+    desc: "curl user-agent (legitimate use) should pass"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "curl/7.88.1"
+        output:
+          status: 200
+
+  - test_id: 10
+    desc: "Mobile browser user-agent should pass"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"
+        output:
+          status: 200

@@ -1,0 +1,99 @@
+rules:
+  - id: "whitelist-monitoring"
+    source: "system"
+    description: "Internal monitoring — bypass all blocking rules"
+    priority: 1
+    condition:
+      and:
+        - field: ip
+          match: cidr
+          value: "10.0.1.0/24"
+    action: allow
+    risk_score_delta: 0
+
+  - id: "honeypot-admin-test"
+    source: "system"
+    description: "Honeypot — any hit on /admin-test triggers permanent block"
+    priority: 5
+    condition:
+      and:
+        - field: path
+          match: exact
+          value: "/admin-test"
+    action: block
+    risk_score_delta: 100
+    response:
+      status: 404
+      body: "Not found."
+
+  - id: "sqli-global-001"
+    source: "system"
+    description: "Block classic and UNION-based SQLi"
+    priority: 10
+    condition:
+      or:
+        - field: payload
+          match: regex
+          value: '(?i)(union[\s\+]+select|drop[\s\+]+table|insert[\s\+]+into)'
+        - field: path
+          match: regex
+          value: '(?i)(union[\s\+]+select)'
+    action: block
+    risk_score_delta: 50
+    response:
+      status: 403
+      body: "Request blocked."
+
+  - id: "xss-global-001"
+    source: "system"
+    description: "Block XSS in payload and path"
+    priority: 11
+    condition:
+      or:
+        - field: payload
+          match: regex
+          value: '(?i)<script[^>]*>|javascript\s*:|on\w+\s*='
+        - field: path
+          match: regex
+          value: '(?i)<script[^>]*>|javascript\s*:'
+    action: block
+    risk_score_delta: 40
+    response:
+      status: 403
+      body: "Request blocked."
+
+  - id: "lfi-global-001"
+    source: "system"
+    description: "Block path traversal attempts"
+    priority: 12
+    condition:
+      or:
+        - field: path
+          match: regex
+          value: '(?i)(\.\.[\\/]){2,}|(etc/passwd|etc/shadow)'
+        - field: payload
+          match: regex
+          value: '(?i)(\.\.[\\/]){2,}|(etc/passwd|etc/shadow)'
+    action: block
+    risk_score_delta: 45
+    response:
+      status: 403
+      body: "Request blocked."
+
+  - id: "cmdi-global-001"
+    source: "system"
+    description: "Block OS command injection"
+    priority: 13
+    condition:
+      or:
+        - field: payload
+          match: regex
+          value: '(?i)[;&|`$]\s*(cat|id|whoami|uname|curl|wget|bash)\b'
+        - field: path
+          match: regex
+          value: '(?i)[;&|`]\s*(cat|id|whoami)\b'
+    action: block
+    risk_score_delta: 60
+    response:
+      status: 403
+      body: "Request blocked."

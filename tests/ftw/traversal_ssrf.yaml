@@ -1,0 +1,130 @@
+---
+meta:
+  author: "mini-waf"
+  description: "Path traversal and SSRF detection tests"
+  name: "traversal_ssrf.yaml"
+rule_id: 1003
+tests:
+  - test_id: 1
+    desc: "Path traversal to /etc/passwd"
+    stages:
+      - input:
+          uri: "/../../etc/passwd"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 2
+    desc: "SSRF via AWS metadata endpoint in POST body"
+    stages:
+      - input:
+          uri: "/fetch"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "url=http://169.254.169.254/latest/meta-data/"
+        output:
+          status: 403
+
+  - test_id: 3
+    desc: "Benign API request should pass through to backend"
+    stages:
+      - input:
+          uri: "/api/hello"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200
+
+  - test_id: 4
+    desc: "URL-encoded path traversal (%2e%2e%2f)"
+    stages:
+      - input:
+          uri: "/%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 5
+    desc: "Sensitive path /.env"
+    stages:
+      - input:
+          uri: "/.env"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 6
+    desc: "Sensitive path /.git/config"
+    stages:
+      - input:
+          uri: "/.git/config"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 7
+    desc: "SSRF to internal IP in query string"
+    stages:
+      - input:
+          uri: "/proxy?target=http://169.254.169.254/"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 8
+    desc: "SSRF via file:// protocol"
+    stages:
+      - input:
+          uri: "/fetch"
+          method: "POST"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+            Content-Type: "application/x-www-form-urlencoded"
+          data: "url=file:///etc/passwd"
+        output:
+          status: 403
+
+  - test_id: 9
+    desc: "Traversal in query parameter"
+    stages:
+      - input:
+          uri: "/download?file=../../etc/shadow"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 403
+
+  - test_id: 10
+    desc: "Benign file download with safe filename should pass"
+    stages:
+      - input:
+          uri: "/static/test.txt"
+          method: "GET"
+          headers:
+            Host: "localhost"
+            User-Agent: "go-ftw"
+        output:
+          status: 200

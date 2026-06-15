@@ -1,0 +1,123 @@
+meta:
+  author: Christoph Hansen, azurit
+rule_id: 942361
+tests:
+- test_id: 1
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: '''alter a'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 2
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: '" ALTER A'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 3
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: '''ALTER A'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 4
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: ''' alter/'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 5
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: '" UNION A'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 6
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: '''UNION A'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403
+- test_id: 7
+  desc: Detects basic SQL injection based on keyword alter or union
+  stages:
+  - input:
+      dest_addr: 127.0.0.1
+      headers:
+        Host: localhost
+        User-Agent: OWASP CRS test agent
+        Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+      method: POST
+      port: 8111
+      uri: /api/echo
+      data: ''' union/'
+      version: HTTP/1.1
+      protocol: http
+    output:
+      status: 403

